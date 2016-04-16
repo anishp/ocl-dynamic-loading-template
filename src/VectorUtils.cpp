@@ -1,15 +1,21 @@
 #include "VectorUtils.hpp"
-#include <random>
+#include <dlfcn.h>
 
 float* VectorUtils::initVector(int N) {
   
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dist(1, 500);
+  void* handle = dlopen("platforms/cpu/libVectorCPU.so", RTLD_LAZY);
   
-  float* vec = new float[N];
-  for(int i=0; i<N; i++)
-    vec[i] = dist(gen);
+  if(!handle) {
+    std::cout<<dlerror();
+  }
+  
+  float* (*initFunc)(int);
+  initFunc = (float* (*)(int)) dlsym(handle, "initVector");
+  
+  float* vec = (*initFunc)(N);
+  
+  dlclose(handle);
+  
   return vec;
 }
 
