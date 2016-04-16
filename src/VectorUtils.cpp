@@ -1,27 +1,52 @@
 #include "VectorUtils.hpp"
 #include <dlfcn.h>
 
+bool VectorUtils::initialized = false;
+void* VectorUtils::handle = NULL;
+VectorUtils::Platform VectorUtils::selectedPlatform = CPU;
+
 float* VectorUtils::initVector(int N) {
   
-  void* handle = dlopen("platforms/cpu/libVectorCPU.so", RTLD_LAZY);
-  
-  if(!handle) {
-    std::cout<<dlerror();
+  if(!initialized) {
+    LoadLibrary(selectedPlatform);
   }
   
   float* (*initFunc)(int);
   initFunc = (float* (*)(int)) dlsym(handle, "initVector");
   
   float* vec = (*initFunc)(N);
-  
-  dlclose(handle);
-  
+    
   return vec;
 }
 
 float* VectorUtils::add(float* a, float*b, int N) {
-  float* c = new float[N];
-  for(int i=0; i<N; i++ )
-    c[i] = a[i] + b[i];
-  return c;
+  float* (*addFunc)(float*, float*, int);
+  addFunc = (float* (*)(float*, float*, int)) dlsym(handle, "add");
+  
+  float* vec = (*addFunc)(a, b, N);
+    
+  return vec;
+}
+
+bool VectorUtils::LoadLibrary(Platform platform) {
+  
+  switch (selectedPlatform) {
+    case CPU:
+      handle = dlopen("libVectorCPU.so", RTLD_LAZY);
+      break;
+    case OPENCL:
+      handle = dlopen("libVectorOCL.so", RTLD_LAZY);
+      break;
+    case CUDA:
+      handle = dlopen("libVectorCUDA.so", RTLD_LAZY);
+      break;
+  }
+  
+  if(!handle) {
+    std::cout<<dlerror();
+    return false;
+  }
+  
+  initialized = true;
+  return true;
 }
